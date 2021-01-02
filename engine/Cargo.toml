@@ -1,0 +1,16 @@
+[package]
+name = "paradise"
+version = "0.1.0"
+authors = ["Jenna Magius <jenna@jenna.app>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3.21"
+log = "0.4.11"
+env_logger = "0.8.2"
+iou = "0.3.3"
+anyhow = "1.0.36"
+sqlx = { version = "0.4.2", features = ["runtime-tokio-rustls", "postgres"] }
+tokio = { version = "0.2", features = ["full"] }
