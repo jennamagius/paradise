@@ -573,7 +573,7 @@ checksum = "22820ec519c7eb16f9ea64316062817963fae77652de6cd8e7655f97bf4fd6dc"
 dependencies = [
  "bitflags",
  "libc",
- "nix",
+ "nix 0.18.0",
  "uring-sys",
 ]
 
@@ -771,6 +771,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2ccba0cfe4fdf15982d1674c69b1fd80bad427d293849982668dfe454bd61f2"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if 1.0.0",
+ "libc",
+]
+
+[[package]]
 name = "nom"
 version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,6 +839,8 @@ dependencies = [
  "env_logger",
  "iou",
  "log",
+ "nix 0.19.1",
+ "parking_lot",
  "sqlx",
  "structopt",
  "tokio",
