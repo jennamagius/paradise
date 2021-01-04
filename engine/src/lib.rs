@@ -1,5 +1,6 @@
 pub mod config;
 mod paradise;
+mod token;
 
 pub async fn run() -> anyhow::Result<()> {
     let config = <crate::config::Config as ::structopt::StructOpt>::from_args();

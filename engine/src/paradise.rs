@@ -66,10 +66,18 @@ impl Paradise {
                 Some(x) => x,
                 None => ::anyhow::bail!("Out of submission queue events"),
             };
+            let mut token = crate::token::Token::default();
+            token.set_category(crate::token::Category::BindAccept);
+            let mut binds_lock = self.i.binds.lock();
+            let idx: u64 = std::convert::TryFrom::try_from(binds_lock.len())?;
+            token.set_idx(idx)?;
+            log::trace!("Setting user data to {}.", token.0);
             unsafe { event.prep_accept(socket, None, ::iou::sqe::SockFlag::SOCK_CLOEXEC) };
-            self.i.binds.lock().push(socket);
+            unsafe { event.set_user_data(token.0) };
+            binds_lock.push(socket);
         }
-        self.i.sq.lock().submit();
+        self.i.sq.lock().submit()?;
+
         log::trace!("Binds finished");
         Ok(())
     }
@@ -88,9 +96,76 @@ impl Paradise {
                         continue;
                     }
                 };
-                log::trace!("Event user data: {}.", event.user_data());
+                let token = crate::token::Token(event.user_data());
+                log::trace!(
+                    "Event token: {} ({}, {}).",
+                    token.0,
+                    token.category(),
+                    token.idx()
+                );
+                match self.dispatch_event(token, event.result()) {
+                    Ok(_) => (),
+                    Err(err) => log::debug!("Error during event dispatch: {}.", err),
+                };
             }
         });
+        Ok(())
+    }
+
+    fn dispatch_event(
+        &self,
+        token: crate::token::Token,
+        result: Result<u32, std::io::Error>,
+    ) -> ::anyhow::Result<()> {
+        let category = token.category();
+        let category = <crate::token::Category as ::num_traits::FromPrimitive>::from_u64(category);
+        let category = match category {
+            Some(x) => x,
+            None => anyhow::bail!("Unknown event category"),
+        };
+        match category {
+            crate::token::Category::Single => Ok(()), //todo!(),
+            crate::token::Category::BindAccept => self.handle_bind_accept(token, result),
+        }
+    }
+
+    fn handle_bind_accept(
+        &self,
+        token: crate::token::Token,
+        result: Result<u32, std::io::Error>,
+    ) -> ::anyhow::Result<()> {
+        let idx = token.idx();
+        let idx: usize = match ::std::convert::TryFrom::try_from(idx) {
+            Ok(x) => x,
+            Err(_) => panic!("Unexpected integer overflow."),
+        };
+        let mut sq = self.i.sq.lock();
+        let mut event = match sq.prepare_sqe() {
+            Some(x) => x,
+            None => panic!("Out of submission queue events."),
+        };
+        let binds_lock = self.i.binds.lock();
+        let socket = match binds_lock.get(idx) {
+            Some(x) => x,
+            None => {
+                anyhow::bail!("Accept event for unknown socket {}.", idx);
+            }
+        };
+        unsafe { event.prep_accept(*socket, None, ::iou::sqe::SockFlag::SOCK_CLOEXEC) };
+        unsafe { event.set_user_data(token.0) };
+        let result = match result {
+            Ok(x) => x,
+            Err(err) => {
+                log::debug!("Error during accept: {}.", err);
+                return Err(::anyhow::Error::new(err));
+            }
+        };
+        let mut event2 = match sq.prepare_sqe() {
+            Some(x) => x,
+            None => panic!("Out of submission queue events."),
+        };
+        unsafe { event2.prep_write(result as ::std::os::unix::io::RawFd, &b"asdf\n"[..], 0) };
+        sq.submit()?;
         Ok(())
     }
 }

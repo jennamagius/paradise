@@ -16,3 +16,5 @@ sqlx = { version = "0.4.2", features = ["runtime-tokio-rustls", "postgres"] }
 tokio = { version = "0.2", features = ["full"] }
 parking_lot = "0.11.1"
 nix = "0.19.1"
+num-derive = "0.3.3"
+num-traits = "0.2.14"
